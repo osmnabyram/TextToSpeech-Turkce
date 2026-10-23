@@ -30,7 +30,7 @@ SILENCE_THRESHOLD = 0.01
 INITIAL_PROMPT = "Merhaba, bugün toplantıda projeyi konuştuk. Sonuçlar gayet iyi, değil mi?"
 CHUNK_SECONDS = 3
 PANEL_WIDTH = 380
-PANEL_HEIGHT = 220
+PANEL_HEIGHT = 300
 
 TITLE = "Sesli Yazma"
 BG = "#121212"
@@ -268,14 +268,10 @@ class DictationPanel:
         )
         self.status_label.pack(fill="x")
 
-        self.text_label = tk.Label(
-            f, text="", font=("Segoe UI", 9), fg=FG, bg=BG,
-            anchor="nw", justify="left", wraplength=PANEL_WIDTH - 44,
-        )
-        self.text_label.pack(fill="both", expand=True, pady=(4, 0))
-
+        # Butonlar en alta sabitlenir. Metin alanindan ONCE "bottom"a
+        # pack'lendigi icin metin ne kadar uzarsa uzasin her zaman gorunur.
         btn_frame = tk.Frame(f, bg=BG)
-        btn_frame.pack(fill="x", pady=(8, 0))
+        btn_frame.pack(side="bottom", fill="x", pady=(10, 0))
 
         self.stop_btn = tk.Button(
             btn_frame, text="✓ Bitir", font=("Segoe UI", 9),
@@ -292,6 +288,39 @@ class DictationPanel:
             cursor="hand2", command=self._on_cancel_click,
         )
         self.cancel_btn.pack(side="right")
+
+        # Kaydirilabilir metin alani: status ile butonlar arasini doldurur.
+        text_wrap = tk.Frame(f, bg=BG)
+        text_wrap.pack(fill="both", expand=True, pady=(4, 0))
+
+        scrollbar = tk.Scrollbar(
+            text_wrap, orient="vertical", width=8, bd=0,
+            bg=BG_LIGHT, troughcolor=BG, activebackground=BORDER,
+            highlightthickness=0,
+        )
+        scrollbar.pack(side="right", fill="y")
+
+        self.text_widget = tk.Text(
+            text_wrap, font=("Segoe UI", 9), fg=FG, bg=BG,
+            wrap="word", bd=0, highlightthickness=0, padx=0, pady=0,
+            insertwidth=0, cursor="arrow", state="disabled",
+            yscrollcommand=scrollbar.set,
+        )
+        self.text_widget.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=self.text_widget.yview)
+
+        def _on_wheel(event):
+            self.text_widget.yview_scroll(int(-event.delta / 120), "units")
+            return "break"
+
+        self.text_widget.bind("<MouseWheel>", _on_wheel)
+
+    def _set_text(self, text):
+        self.text_widget.config(state="normal")
+        self.text_widget.delete("1.0", "end")
+        self.text_widget.insert("1.0", text)
+        self.text_widget.config(state="disabled")
+        self.text_widget.see("end")
 
     def _position_panel(self):
         class POINT(ctypes.Structure):
@@ -347,7 +376,7 @@ class DictationPanel:
             open_stream()
         except Exception:
             self.status_label.config(text="Mikrofon açılamadı", fg=ACCENT_RED)
-            self.text_label.config(text="")
+            self._set_text("")
             self.show_panel()
             self.root.after(1500, self.hide_panel)
             return
@@ -357,7 +386,7 @@ class DictationPanel:
         self.record_start = time.time()
 
         self.status_label.config(text="🎙 Dinliyor — konuştukça metin gelecek...", fg=ACCENT)
-        self.text_label.config(text="")
+        self._set_text("")
         self.timer_label.config(text="0:00")
         self.stop_btn.config(state="normal", text="✓ Bitir")
 
@@ -391,7 +420,7 @@ class DictationPanel:
             self.stream_worker = None
             self.is_finishing = False
             if text:
-                self.text_label.config(text=text)
+                self._set_text(text)
                 self.status_label.config(text="✓ Yapıştırıldı", fg=SUCCESS)
                 self._restore_focus()
                 self.root.after(50, lambda: self._do_paste(text))
@@ -415,7 +444,7 @@ class DictationPanel:
         self.hide_panel()
 
     def on_live_text(self, text):
-        self.text_label.config(text=text)
+        self._set_text(text)
 
     def on_status(self, text, color):
         self.status_label.config(text=text, fg=color)
