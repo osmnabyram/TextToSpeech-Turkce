@@ -253,6 +253,9 @@ class WinHotkeyHook(threading.Thread):
         user32.SetWindowsHookExW.restype = wintypes.HHOOK
         user32.SetWindowsHookExW.argtypes = [ctypes.c_int, HOOKPROC,
                                              wintypes.HINSTANCE, wintypes.DWORD]
+        # 64-bit'te handle'in kirpilmamasi icin donus tipini belirt
+        kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+        kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
 
         def ll(nCode, wParam, lParam):
             if nCode == 0:
@@ -273,7 +276,10 @@ class WinHotkeyHook(threading.Thread):
                             # Win tuşunu maskele ki Başlat menüsü açılmasın
                             user32.keybd_event(VK_CONTROL, 0, 0, 0)
                             user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
-                            self.on_toggle()
+                            try:
+                                self.on_toggle()
+                            except Exception:
+                                pass
                         return 1
                     elif up:
                         self._h_consumed = False
