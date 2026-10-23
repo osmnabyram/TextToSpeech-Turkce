@@ -34,16 +34,9 @@ Windows'un kendi sesli yazması (`Win + H`), telefonundaki klavye, tarayıcı ek
 | Windows konuşma servisleri | Kullanılıyor | ❌ **Hiç dokunulmuyor** |
 | Kaynak kodu | Kapalı | ✅ **Açık, tek dosya, okunabilir** |
 
-```mermaid
-flowchart LR
-    A[🎤 Mikrofon] --> B[Python süreci<br/>RAM'de ses]
-    B --> C[Whisper modeli<br/>yerel CPU]
-    C --> D[📝 Aktif pencere]
-    B -. ❌ .-> E[(İnternet)]
-    C -. ❌ .-> E
-    style E fill:#121212,stroke:#e53935,color:#ff5252,stroke-dasharray: 5 5
-    style C fill:#2a1215,stroke:#e53935,color:#fff
-```
+<div align="center">
+<img src="assets/how-it-works.svg" alt="Ses mikrofondan alınır, yerel Whisper modelinde metne çevrilir ve aktif pencereye yazılır; hiçbir veri internete gitmez." width="820" />
+</div>
 
 - 🧠 **Ses tanıma tamamen yerelde** yapılıyor: OpenAI'nin açık kaynak [Whisper](https://github.com/openai/whisper) modeli, [faster-whisper](https://github.com/SYSTRAN/faster-whisper) ile CPU üzerinde çalışıyor.
 - 🚫 **Uygulama ağa hiç çıkmıyor.** Model indirildikten sonra kod `HF_HUB_OFFLINE=1` ve `HF_HUB_DISABLE_TELEMETRY=1` ile kilitleniyor. İnternet kablosunu çekip dene, aynen çalışıyor.
