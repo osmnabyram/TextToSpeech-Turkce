@@ -210,6 +210,88 @@ def setup_tray(root):
     threading.Thread(target=tray_icon.run, daemon=True).start()
 
 
+class WinHotkeyHook(threading.Thread):
+    """Düşük seviye klavye kancası.
+
+    Windows tuşunu asla bastırmaz; yalnızca Win basılıyken H'yi yutar
+    (böylece Windows'un kendi Win+H sesli yazması açılmaz). Win+V, tek Win,
+    diğer tüm Win kombinasyonları normal çalışmaya devam eder. Win+H'den
+    sonra Başlat menüsünün açılmaması için Win tuşunu bir Ctrl dokunuşuyla
+    maskeler.
+    """
+
+    def __init__(self, on_toggle, on_escape):
+        super().__init__(daemon=True)
+        self.on_toggle = on_toggle
+        self.on_escape = on_escape
+        self._win_down = False
+        self._h_consumed = False
+        self._proc = None
+
+    def run(self):
+        from ctypes import wintypes
+
+        WH_KEYBOARD_LL = 13
+        WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
+        WM_SYSKEYDOWN, WM_SYSKEYUP = 0x0104, 0x0105
+        VK_LWIN, VK_RWIN, VK_H, VK_ESCAPE, VK_CONTROL = 0x5B, 0x5C, 0x48, 0x1B, 0x11
+        KEYEVENTF_KEYUP = 0x0002
+
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        class KBDLLHOOKSTRUCT(ctypes.Structure):
+            _fields_ = [("vkCode", wintypes.DWORD), ("scanCode", wintypes.DWORD),
+                        ("flags", wintypes.DWORD), ("time", wintypes.DWORD),
+                        ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong))]
+
+        HOOKPROC = ctypes.CFUNCTYPE(ctypes.c_ssize_t, ctypes.c_int,
+                                    wintypes.WPARAM, wintypes.LPARAM)
+        user32.CallNextHookEx.restype = ctypes.c_ssize_t
+        user32.CallNextHookEx.argtypes = [wintypes.HHOOK, ctypes.c_int,
+                                          wintypes.WPARAM, wintypes.LPARAM]
+        user32.SetWindowsHookExW.restype = wintypes.HHOOK
+        user32.SetWindowsHookExW.argtypes = [ctypes.c_int, HOOKPROC,
+                                             wintypes.HINSTANCE, wintypes.DWORD]
+
+        def ll(nCode, wParam, lParam):
+            if nCode == 0:
+                kb = ctypes.cast(lParam, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
+                vk = kb.vkCode
+                down = wParam in (WM_KEYDOWN, WM_SYSKEYDOWN)
+                up = wParam in (WM_KEYUP, WM_SYSKEYUP)
+                if vk in (VK_LWIN, VK_RWIN):
+                    if down:
+                        self._win_down = True
+                    elif up:
+                        self._win_down = False
+                        self._h_consumed = False
+                elif vk == VK_H and self._win_down:
+                    if down:
+                        if not self._h_consumed:
+                            self._h_consumed = True
+                            # Win tuşunu maskele ki Başlat menüsü açılmasın
+                            user32.keybd_event(VK_CONTROL, 0, 0, 0)
+                            user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+                            self.on_toggle()
+                        return 1
+                    elif up:
+                        self._h_consumed = False
+                        return 1
+                elif vk == VK_ESCAPE and down:
+                    self.on_escape()
+            return user32.CallNextHookEx(None, nCode, wParam, lParam)
+
+        self._proc = HOOKPROC(ll)
+        self._hook = user32.SetWindowsHookExW(
+            WH_KEYBOARD_LL, self._proc, kernel32.GetModuleHandleW(None), 0)
+
+        msg = wintypes.MSG()
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
+
+
 class DictationPanel:
     def __init__(self):
         self.root = tk.Tk()
@@ -234,8 +316,8 @@ class DictationPanel:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         setup_tray(self.root)
 
-        keyboard.add_hotkey("windows+h", self._on_hotkey, suppress=True)
-        keyboard.add_hotkey("escape", self._on_escape, suppress=False)
+        self._kbhook = WinHotkeyHook(self._on_hotkey, self._on_escape)
+        self._kbhook.start()
 
     def _build_panel(self):
         f = tk.Frame(self.root, bg=BG, highlightbackground=BORDER,
