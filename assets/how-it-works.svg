@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 330" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" role="img" aria-label="Ses mikrofondan alinir, yerel Whisper modelinde metne cevrilir ve aktif pencereye yazilir; hicbir veri internete gitmez.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 330" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" role="img" aria-label="Audio is captured from the microphone, transcribed locally by Whisper, and typed into the active window; no data goes to the internet.">
   <style>
     :root{
       --ink:#1b1b1f; --muted:#6b7280; --line:#c7cad1;
@@ -50,7 +50,7 @@
     @keyframes xflash{0%,46%{opacity:0}53%{opacity:1}66%{opacity:1}76%,100%{opacity:0}}
   </style>
 
-  <text x="410" y="26" text-anchor="middle" class="title muted">Ses bilgisayarindan disari cikmaz — boyle calisir</text>
+  <text x="410" y="26" text-anchor="middle" class="title muted">Your voice never leaves your computer — how it works</text>
 
   <!-- connectors -->
   <line x1="196" y1="150" x2="322" y2="150" class="ln"/>
@@ -64,7 +64,7 @@
     <path d="M4 30 a21 21 0 0 0 42 0" class="accs" fill="none" stroke-width="2.5"/>
     <line x1="25" y1="51" x2="25" y2="64" class="accs" stroke-width="2.5"/>
     <line x1="14" y1="64" x2="36" y2="64" class="accs" stroke-width="2.5"/>
-    <text x="25" y="86" text-anchor="middle" class="lbl ink">Mikrofon</text>
+    <text x="25" y="86" text-anchor="middle" class="lbl ink">Microphone</text>
   </g>
   <!-- animated sound bars -->
   <g transform="translate(132,135)">
@@ -85,7 +85,7 @@
       <line x1="480" y1="128" x2="490" y2="128"/><line x1="480" y1="150" x2="490" y2="150"/><line x1="480" y1="172" x2="490" y2="172"/>
     </g>
     <text x="405" y="146" text-anchor="middle" class="lbl ink">Whisper</text>
-    <text x="405" y="166" text-anchor="middle" class="sub muted">yerel CPU · offline</text>
+    <text x="405" y="166" text-anchor="middle" class="sub muted">local CPU · offline</text>
   </g>
   <circle class="outdot acc" cx="482" cy="150" r="5"/>
 
@@ -96,7 +96,7 @@
     <circle cx="632" cy="114" r="3" class="acc"/><circle cx="644" cy="114" r="3" class="muted" fill="currentColor"/>
     <g class="typed"><text x="634" y="158" class="lbl ink">merhaba</text></g>
     <rect class="caret acc" x="634" y="146" width="2" height="16"/>
-    <text x="700" y="186" text-anchor="middle" class="sub muted">aktif pencere</text>
+    <text x="700" y="186" text-anchor="middle" class="sub muted">active window</text>
   </g>
 
   <!-- blocked internet -->
@@ -110,6 +110,6 @@
         <line x1="-9" y1="-9" x2="9" y2="9"/><line x1="9" y1="-9" x2="-9" y2="9"/>
       </g>
     </g>
-    <text x="0" y="300" text-anchor="middle" class="sub muted">internete veri gitmez</text>
+    <text x="0" y="300" text-anchor="middle" class="sub muted">no data leaves</text>
   </g>
 </svg>
