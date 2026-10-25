@@ -25,6 +25,7 @@ MODEL_SIZE = "small"
 LANGUAGE = "tr"
 SAMPLE_RATE = 16000
 BEAM_SIZE = 5
+LIVE_BEAM_SIZE = 1
 VAD_FILTER = True
 SILENCE_THRESHOLD = 0.01
 INITIAL_PROMPT = "Merhaba, bugün toplantıda projeyi konuştuk. Sonuçlar gayet iyi, değil mi?"
@@ -47,7 +48,9 @@ frames = []
 frames_lock = threading.Lock()
 app = None
 
-model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
+_CPU_THREADS = max(1, min(4, os.cpu_count() or 4))
+model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8",
+                     cpu_threads=_CPU_THREADS, num_workers=1)
 
 _current_rms = 0.0
 
@@ -99,13 +102,33 @@ def trim_silence(audio, threshold=SILENCE_THRESHOLD, chunk=1600):
     return audio[start:end] if end > start else audio
 
 
-def transcribe(audio):
+def transcribe(audio, beam_size=BEAM_SIZE, condition=True):
     segments, _ = model.transcribe(
         audio, language=LANGUAGE,
-        beam_size=BEAM_SIZE, vad_filter=VAD_FILTER,
+        beam_size=beam_size, vad_filter=VAD_FILTER,
         initial_prompt=INITIAL_PROMPT,
+        condition_on_previous_text=condition,
     )
     return " ".join(s.text for s in segments).strip()
+
+
+def _warmup():
+    # Modeli arka planda bir kez calistirir; ilk gercek Win+H gecikmesini onler.
+    # VAD kapali + kucuk gurultu + ureticinin tuketilmesi, encoder/decoder'in
+    # gercekten bir kez isinmasini garanti eder.
+    try:
+        segments, _ = model.transcribe(
+            (np.random.randn(SAMPLE_RATE).astype(np.float32) * 0.01),
+            language=LANGUAGE, beam_size=LIVE_BEAM_SIZE,
+            vad_filter=False, condition_on_previous_text=False,
+        )
+        for _ in segments:
+            pass
+    except Exception:
+        pass
+
+
+threading.Thread(target=_warmup, daemon=True).start()
 
 
 class StreamWorker(threading.Thread):
@@ -140,7 +163,7 @@ class StreamWorker(threading.Thread):
             return
 
         try:
-            text = transcribe(audio)
+            text = transcribe(audio, beam_size=LIVE_BEAM_SIZE, condition=False)
         except Exception:
             text = ""
 
